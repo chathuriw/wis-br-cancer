@@ -24,15 +24,19 @@ package fall2015.b565.wisBreastCancer;
 public class Record {
     private int scn;
     private int dataClass;
+    private int centroidIndex;
 
-    private Object[] attributes;
+    private int[] attributes;
 
     public Record(int scn, int noOfAttributes) {
-        attributes = new Object[noOfAttributes];
+        attributes = new int[noOfAttributes];
+        for (int i = 0; i < noOfAttributes; i++) {
+            attributes[i] = 0;
+        }
         this.scn = scn;
     }
 
-    public void setAttribute(int index, Object value) {
+    public void setAttribute(int index, int value) {
         attributes[index] = value;
     }
 
@@ -40,7 +44,7 @@ public class Record {
         return scn;
     }
 
-    public Object[] getAttributes() {
+    public int[] getAttributes() {
         return attributes;
     }
 
@@ -50,5 +54,13 @@ public class Record {
 
     public void setDataClass(int dataClass) {
         this.dataClass = dataClass;
+    }
+
+    public int getCentroidIndex() {
+        return centroidIndex;
+    }
+
+    public void setCentroidIndex(int centroidIndex) {
+        this.centroidIndex = centroidIndex;
     }
 }

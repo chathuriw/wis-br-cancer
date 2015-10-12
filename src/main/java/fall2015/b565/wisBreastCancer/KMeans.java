@@ -36,7 +36,8 @@ import java.util.Random;
 public class KMeans {
     private static final Logger logger = LoggerFactory.getLogger(KMeans.class);
     private static int k;
-    public static void main(String[] args) throws Exception{
+
+    public static void main(String[] args) throws Exception {
         KMeans kMeans = new KMeans();
         try {
             // read cleaned data file
@@ -47,8 +48,13 @@ public class KMeans {
             List<Centroid> centroids = kMeans.generateCentroids(k);
             // calculate distance for each data point
             // assign data points to centroids
-            kMeans.assignRecordsToCentroids(centroids, records);
+            for (int i = 0; i < 10; i++) {
+                kMeans.assignRecordsToCentroids(centroids, records);
+                List<Centroid> newCentroids = kMeans.calculateAvgCentroid(centroids, records);
+                centroids = newCentroids;
+            }
 
+            kMeans.printClasses(centroids, records);
         } catch (Exception e) {
             logger.error("Error occurred while calculating KMeans algorithm", e);
             throw new Exception("Error occurred while calculating KMeans algorithm", e);
@@ -58,7 +64,16 @@ public class KMeans {
         // do the same again until threshold satisfies
     }
 
-    public void readConfigurations() throws Exception{
+    public void printClasses(List<Centroid> centroids, List<Record> records) {
+        for (int i = 0; i < centroids.size(); i++) {
+            System.out.println("Centroid: " + i + " has " + centroids.get(i).getAssignedRecords().size());
+        }
+        for (int i = 0; i < records.size(); i++) {
+            System.out.println("Record: " + records.get(i).getScn() + " c = " + records.get(i).getDataClass() + " cent = " + records.get(i).getCentroidIndex());
+        }
+    }
+
+    public void readConfigurations() throws Exception {
         try {
             k = Integer.valueOf(PropertyReader.getProperty(Constants.NUMBER_OF_CENTROIDS));
             if (k == 0) {
@@ -71,7 +86,7 @@ public class KMeans {
         }
     }
 
-    public List<Record> getRecords () throws Exception{
+    public List<Record> getRecords() throws Exception {
         List<Record> recordList = new ArrayList<Record>();
         try {
             InputStream is = FileReader.class.getClassLoader().getResourceAsStream(Constants.CLEANED_DATA_FILE_NAME);
@@ -81,10 +96,10 @@ public class KMeans {
             String line = null;
             while ((line = br.readLine()) != null) {
                 String[] lineSplits = line.split(",");
-                if (lineSplits.length > 10){
+                if (lineSplits.length > 10) {
                     Record record = new Record(Integer.valueOf(lineSplits[0]), 9);
-                    for (int i = 1; i < lineSplits.length- 1; i++) {
-                        record.setAttribute(i - 1, lineSplits[i]);
+                    for (int i = 1; i < lineSplits.length - 1; i++) {
+                        record.setAttribute(i - 1, Integer.parseInt(lineSplits[i]));
                     }
                     record.setDataClass(Integer.valueOf(lineSplits[10]));
                     recordList.add(record);
@@ -92,21 +107,21 @@ public class KMeans {
             }
             br.close();
             return recordList;
-        }catch (Exception e){
+        } catch (Exception e) {
             logger.error("Error occurred while reading cleaned data file", e);
             throw new Exception("Error occurred while reading cleaned data file", e);
         }
     }
 
-    public double euclideanDistance(Object[] attrib1, Object[] attrib2) {
+    public double euclideanDistance(int[] attrib1, int[] attrib2) {
         double v = 0;
-        for (int i = 0; i < attrib1.length; i++){
+        for (int i = 0; i < attrib1.length; i++) {
             v += Math.pow(((Integer) attrib1[i] - (Integer) attrib2[i]), 2);
         }
         return Math.sqrt(v);
     }
 
-    public List<Centroid> generateCentroids (int k) throws Exception{
+    public List<Centroid> generateCentroids(int k) throws Exception {
         // read number of centroids from properties file
         List<Centroid> randomCentroids = new ArrayList<Centroid>();
         Random random = new Random();
@@ -123,33 +138,67 @@ public class KMeans {
     }
 
 
-
-    public void assignRecordsToCentroids (List<Centroid> centroidList, List<Record> recordList){
-
-            for (int j =0; j < recordList.size(); j++) {
-                double[] distancesToEachCentroid = new double[centroidList.size()];
-                Record record = recordList.get(j);
-                Object[] attributeList1 = record.getAttributes();
-                for (int i = 0; i < centroidList.size(); i++) {
-                    Centroid centroid = centroidList.get(i);
-                    Record randomRecord = centroid.getRandomRecord();
-                    Object[] attributeList2 = randomRecord.getAttributes();
-                    distancesToEachCentroid[i] = euclideanDistance(attributeList1, attributeList2);
-                }
-                int index = calculateMin(distancesToEachCentroid);
-                centroidList.get(index).addRecordToAssignedList(j);
+    public void assignRecordsToCentroids(List<Centroid> centroidList, List<Record> recordList) {
+        for (int j = 0; j < recordList.size(); j++) {
+            double[] distancesToEachCentroid = new double[centroidList.size()];
+            Record record = recordList.get(j);
+            int[] attributeList1 = record.getAttributes();
+            for (int i = 0; i < centroidList.size(); i++) {
+                Centroid centroid = centroidList.get(i);
+                Record randomRecord = centroid.getRandomRecord();
+                int[] attributeList2 = randomRecord.getAttributes();
+                distancesToEachCentroid[i] = euclideanDistance(attributeList1, attributeList2);
             }
+            int index = calculateMin(distancesToEachCentroid);
+            centroidList.get(index).addRecordToAssignedList(j);
+            record.setCentroidIndex(index);
+        }
     }
 
     public int calculateMin(double[] distancesToEachCentroid) {
         double min = distancesToEachCentroid[0];
         int index = 0;
-        for (int k=1; k<distancesToEachCentroid.length; k++){
-            if (distancesToEachCentroid[k] < min){
+        for (int k = 1; k < distancesToEachCentroid.length; k++) {
+            if (distancesToEachCentroid[k] < min) {
                 min = distancesToEachCentroid[k];
                 index = k;
             }
         }
         return index;
+    }
+
+    public List<Centroid> calculateAvgCentroid(List<Centroid> centroidList, List<Record> recordList) {
+        List<Centroid> newCentroidList = new ArrayList<Centroid>();
+
+        for (int i = 0; i < centroidList.size(); i++) {
+            Centroid centroid = new Centroid(new Record(0, 9), i);
+            newCentroidList.add(centroid);
+        }
+
+        for (int i = 0; i < recordList.size(); i++) {
+            Record r = recordList.get(i);
+            Centroid c = newCentroidList.get(r.getCentroidIndex());
+            Record centroidRecord = c.getRandomRecord();
+
+            int[] attrbs = centroidRecord.getAttributes();
+            for (int j = 0; j < 9; j++) {
+                int d = r.getAttributes()[j];
+                attrbs[j] = (int)(attrbs[j] + d);
+            }
+        }
+
+        for (int i = 0; i < centroidList.size(); i++) {
+            Centroid centroid = newCentroidList.get(i);
+            Centroid oldCentroid = centroidList.get(i);
+
+            Record r = centroid.getRandomRecord();
+            int[] attrbs = r.getAttributes();
+            for (int j = 0; j < 9; j++) {
+                int d = r.getAttributes()[j];
+                attrbs[j] = d / oldCentroid.getAssignedRecords().size();
+            }
+        }
+
+        return newCentroidList;
     }
 }
