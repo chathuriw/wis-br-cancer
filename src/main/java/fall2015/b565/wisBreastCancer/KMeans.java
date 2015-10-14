@@ -39,16 +39,27 @@ public class KMeans {
     private static int iterations = 10;
     private static int[] allAttributeHeaders = {0,1,2,3,4,5,6,7,8};
     private static int totalAttributes = 9;
+    private static int vfoldBlocks = 0;
 
     public static void main(String[] args) throws Exception {
         KMeans kMeans = new KMeans();
-        Set<Set<Integer>> kMeansPowerSet = kMeans.getPowerSet(new HashSet<Integer>(Ints.asList(allAttributeHeaders)));
+        kMeans.readConfigurations();
+        kMeans.findKmeansToAllAttributes();
+        kMeans.findKmeansToAttributePowerSet();
+    }
+
+    private void findKmeansToAttributePowerSet() throws Exception {
+        Set<Set<Integer>> kMeansPowerSet = getPowerSet(new HashSet<Integer>(Ints.asList(allAttributeHeaders)));
         Map<Double, Set<Integer>> ppvMap = new HashMap<Double, Set<Integer>>();
+        List<Record> records = getRecords();
         for (Set<Integer> set : kMeansPowerSet){
             if (set.size() != 0) {
-                KMeansResult result = kMeans.calculate(set);
-                double ppv = kMeans.getPPV(result);
+                // make data structure of attributes
+                KMeansResult result = calculate(records, set);
+                double ppv = getPPV(result.getFinalCentroids(), result.getInitialRecords());
                 ppvMap.put(ppv, set);
+                double vFoldCrossValidation = vFoldCrossValidation(result.getInitialRecords(), vfoldBlocks, set);
+                System.out.println("VFoldcrossValidation val : " + vFoldCrossValidation);
             }
         }
         Double maxPPV = 0.0;
@@ -61,13 +72,20 @@ public class KMeans {
         System.out.println("Max PPV : " + maxPPV + " attribute Set : " + attributeSet.toString());
     }
 
-    public KMeansResult calculate(Set<Integer> attributes) {
+    private void findKmeansToAllAttributes() throws Exception {
+        List<Record> records = getRecords();
+        // make data structure of attributes
+        HashSet<Integer> attributes = new HashSet<Integer>(Ints.asList(allAttributeHeaders));
+        KMeansResult result = calculate(records, attributes);
+        double ppv = getPPV(result.getFinalCentroids(), result.getInitialRecords());
+        double vFoldCrossValidation = vFoldCrossValidation(result.getInitialRecords(), vfoldBlocks, attributes);
+        System.out.println("PPV : " + ppv);
+        System.out.println("VFoldcrossValidation val : " + vFoldCrossValidation);
+    }
+
+    public KMeansResult calculate(List<Record> records, Set<Integer> attributes) {
         try {
             KMeansResult result = new KMeansResult();
-            // read cleaned data file
-            readConfigurations();
-            // make data structure of attributes
-            List<Record> records = getRecords();
             // randomly select K centroids
             List<Centroid> centroids = generateCentroids(k);
             List<Centroid> randomCentroids = generateCentroids(k);
@@ -106,9 +124,7 @@ public class KMeans {
         }
     }
 
-    private double getPPV(KMeansResult result) throws Exception {
-        List<Centroid> lastAssignedCentroids = result.getFinalCentroids();
-        List<Record> records = result.getInitialRecords();
+    private double getPPV(List<Centroid> lastAssignedCentroids, List<Record> records){
         PPV ppv = calculatePPV(lastAssignedCentroids, records);
         System.out.println("PPV val : " + ppv.getPpv());
         return ppv.getPpv();
@@ -145,7 +161,7 @@ public class KMeans {
         return sets;
     }
 
-    public PPV calculatePPV (List<Centroid> centroids, List<Record> records) throws Exception {
+    public PPV calculatePPV (List<Centroid> centroids, List<Record> records) {
         PPV ppv = new PPV();
         HashMap<Integer, HashMap<Integer, Integer>> centroidClassMap = new HashMap<Integer, HashMap<Integer, Integer>>();
         for (Centroid centroid : centroids) {
@@ -205,6 +221,7 @@ public class KMeans {
             }
             threshold = Double.valueOf(PropertyReader.getProperty(Constants.THRESHHOLD));
             iterations = Integer.parseInt(PropertyReader.getProperty(Constants.ITERATIONS));
+            vfoldBlocks = Integer.parseInt(PropertyReader.getProperty(Constants.VFOLD_VALIDATION_BLOCKS));
 
         } catch (Exception e) {
             logger.error("Error occurred while reading configuration file", e);
@@ -329,4 +346,42 @@ public class KMeans {
 
         return newCentroidList;
     }
+
+    private class VFoldRecords {
+        List<Record> train = new ArrayList<Record>();
+        List<Record> test = new ArrayList<Record>();
+    }
+
+    public double vFoldCrossValidation (List<Record> recordList, int v, Set<Integer> attributeIndexes){
+        double ppv = 0;
+        for (int i = 0; i < v; i++) {
+            VFoldRecords vFoldRecords = vFoldRecords(recordList, i, v);
+            KMeansResult result = calculate(vFoldRecords.train, attributeIndexes);
+
+            List<Centroid> finalCentroids = result.getFinalCentroids();
+            for (Centroid centroid : finalCentroids){
+                centroid.getAssignedRecords().clear();
+            }
+            assignRecordsToCentroids(finalCentroids, vFoldRecords.test, attributeIndexes);
+            ppv += getPPV(finalCentroids, vFoldRecords.test);
+        }
+        return ppv / v;
+    }
+
+    private VFoldRecords vFoldRecords(List<Record> recordList, int index, int folds) {
+        VFoldRecords vFoldRecords = new VFoldRecords();
+        int foldSize = recordList.size() / folds;
+        int start = index * foldSize;
+        int end = start + foldSize > recordList.size() ? recordList.size() - 1 : start + foldSize - 1;
+
+        for (int i = 0; i < recordList.size(); i++) {
+            if (i >= start && i <= end) {
+                vFoldRecords.test.add(recordList.get(i));
+            } else {
+                vFoldRecords.train.add(recordList.get(i));
+            }
+        }
+        return vFoldRecords;
+    }
+
 }
