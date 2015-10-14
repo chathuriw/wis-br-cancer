@@ -21,6 +21,7 @@
 
 package fall2015.b565.wisBreastCancer;
 
+import com.google.common.primitives.Ints;
 import fall2015.b565.wisBreastCancer.utils.Constants;
 import fall2015.b565.wisBreastCancer.utils.PropertyReader;
 import org.slf4j.Logger;
@@ -29,45 +30,63 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class KMeans {
     private static final Logger logger = LoggerFactory.getLogger(KMeans.class);
     private static int k;
     private static double threshold = .1;
     private static int iterations = 10;
-    private static int[] userGivenAttributes;
-    private static int numberOfUserGivenAttributes = 0;
+    private static int[] allAttributeHeaders = {0,1,2,3,4,5,6,7,8};
     private static int totalAttributes = 9;
 
     public static void main(String[] args) throws Exception {
         KMeans kMeans = new KMeans();
-        try {
-            // read cleaned data file
-            kMeans.readConfigurations();
-            // make data structure of attributes
-            List<Record> records = kMeans.getRecords();
-            // randomly select K centroids
-            List<Centroid> centroids = kMeans.generateCentroids(k);
-            List<Centroid> randomCentroids = kMeans.generateCentroids(k);
+        Set<Set<Integer>> kMeansPowerSet = kMeans.getPowerSet(new HashSet<Integer>(Ints.asList(allAttributeHeaders)));
+        Map<Double, Set<Integer>> ppvMap = new HashMap<Double, Set<Integer>>();
+        for (Set<Integer> set : kMeansPowerSet){
+            if (set.size() != 0) {
+                KMeansResult result = kMeans.calculate(set);
+                double ppv = kMeans.getPPV(result);
+                ppvMap.put(ppv, set);
+            }
+        }
+        Double maxPPV = 0.0;
+        for (Double ppv : ppvMap.keySet()){
+            if (ppv > maxPPV){
+                maxPPV = ppv;
+            }
+        }
+        Set<Integer> attributeSet = ppvMap.get(maxPPV);
+        System.out.println("Max PPV : " + maxPPV + " attribute Set : " + attributeSet.toString());
+    }
 
-            double previousCentroidDifference = kMeans.centroidDistance(centroids, randomCentroids);
+    public KMeansResult calculate(Set<Integer> attributes) {
+        try {
+            KMeansResult result = new KMeansResult();
+            // read cleaned data file
+            readConfigurations();
+            // make data structure of attributes
+            List<Record> records = getRecords();
+            // randomly select K centroids
+            List<Centroid> centroids = generateCentroids(k);
+            List<Centroid> randomCentroids = generateCentroids(k);
+
+            double previousCentroidDifference = centroidDistance(centroids, randomCentroids, attributes);
 //            double previousCentroidDifference = Double.MIN_VALUE;
             double currentCentroidDifference = 0;
             // calculate distance for each data point
             // assign data points to centroids
             List<Centroid> lastAssignedCentroids = centroids;
             for (int i = 0; i < iterations; i++) {
-                kMeans.assignRecordsToCentroids(centroids, records);
+                assignRecordsToCentroids(centroids, records, attributes);
                 lastAssignedCentroids = centroids;
                 // calculate average of the cluster and make them as new data point
                 // do the same again until threshold satisfies
-                List<Centroid> newCentroids = kMeans.calculateAvgCentroid(centroids, records);
+                List<Centroid> newCentroids = calculateAvgCentroid(centroids, records);
 
                 // break if the centroids doesn't change
-                currentCentroidDifference = kMeans.centroidDistance(newCentroids, centroids);
+                currentCentroidDifference = centroidDistance(newCentroids, centroids, attributes);
                 double difference = Math.abs(currentCentroidDifference - previousCentroidDifference);
                 if (difference <= threshold * previousCentroidDifference) {
                     System.out.println("KMeans finished in iterations: " + i + " with threshold difference: " + difference);
@@ -76,23 +95,96 @@ public class KMeans {
                 previousCentroidDifference = currentCentroidDifference;
                 centroids = newCentroids;
             }
-            kMeans.printClasses(lastAssignedCentroids, records);
+            result.setFinalCentroids(lastAssignedCentroids);
+            result.setInitialRecords(records);
+            return result;
+//            printClasses(lastAssignedCentroids, records);
         } catch (Exception e) {
-            logger.error("Error occurred while calculating KMeans algorithm", e);
-            throw new Exception("Error occurred while calculating KMeans algorithm", e);
+            String s = "Error occurred while calculating KMeans algorithm";
+            logger.error(s, e);
+            throw new RuntimeException(s, e);
         }
     }
 
-    public double centroidDistance(List<Centroid> centroids1, List<Centroid> centroids2) {
+    private double getPPV(KMeansResult result) throws Exception {
+        List<Centroid> lastAssignedCentroids = result.getFinalCentroids();
+        List<Record> records = result.getInitialRecords();
+        PPV ppv = calculatePPV(lastAssignedCentroids, records);
+        System.out.println("PPV val : " + ppv.getPpv());
+        return ppv.getPpv();
+    }
+
+    public double centroidDistance(List<Centroid> centroids1, List<Centroid> centroids2, Set<Integer> attributeIndexes) {
         double sum = 0;
         for (int i = 0; i < centroids1.size(); i++) {
             Centroid c1 = centroids1.get(i);
             Centroid c2 = centroids2.get(i);
 
-            double distance = euclideanDistance(c1.getRandomRecord().getAttributes(), c2.getRandomRecord().getAttributes());
+            double distance = euclideanDistance(c1.getRandomRecord().getAttributes(), c2.getRandomRecord().getAttributes(), attributeIndexes);
             sum += distance;
         }
         return sum;
+    }
+
+    public Set<Set<Integer>> getPowerSet(Set<Integer> originalSet) {
+        Set<Set<Integer>> sets = new HashSet<Set<Integer>>();
+        if (originalSet.isEmpty()) {
+            sets.add(new HashSet<Integer>());
+            return sets;
+        }
+        List<Integer> list = new ArrayList<Integer>(originalSet);
+        Integer head = list.get(0);
+        Set<Integer> rest = new HashSet<Integer>(list.subList(1, list.size()));
+        for (Set<Integer> set : getPowerSet(rest)) {
+            Set<Integer> newSet = new HashSet<Integer>();
+            newSet.add(head);
+            newSet.addAll(set);
+            sets.add(newSet);
+            sets.add(set);
+        }
+        return sets;
+    }
+
+    public PPV calculatePPV (List<Centroid> centroids, List<Record> records) throws Exception {
+        PPV ppv = new PPV();
+        HashMap<Integer, HashMap<Integer, Integer>> centroidClassMap = new HashMap<Integer, HashMap<Integer, Integer>>();
+        for (Centroid centroid : centroids) {
+            List<Integer> assignedRecords = centroid.getAssignedRecords();
+            HashMap<Integer, Integer> classCountMap = new HashMap<Integer, Integer>();
+            for (Integer assignedRecord : assignedRecords) {
+                Record record = records.get(assignedRecord);
+                int dataClass = record.getDataClass();
+                Integer count = classCountMap.get(dataClass);
+                if (count == null) {
+                    count = 0;
+                }
+                count++;
+                classCountMap.put(dataClass, count);
+            }
+            centroidClassMap.put(centroid.getCentroidId(), classCountMap);
+        }
+        Integer totalTP = 0;
+        Integer totalFP = 0;
+        for (Integer centroidId : centroidClassMap.keySet()) {
+            ppv.setCentroidId(centroidId);
+            HashMap<Integer, Integer> classCountMap = centroidClassMap.get(centroidId);
+            Integer maxCount = 0;
+            Integer totalCount = 0;
+            for (Integer classNumber : classCountMap.keySet()) {
+                Integer class1Count = classCountMap.get(classNumber);
+                totalCount += class1Count;
+                if (class1Count > maxCount) {
+                    maxCount = class1Count;
+                }
+            }
+            totalTP += maxCount;
+            totalFP += (totalCount - maxCount);
+        }
+        double ppval = (double) totalTP / (totalTP + totalFP);
+        System.out.println("totalTp : " + totalTP + " total count : " + (totalTP + totalFP) + " ppv : " + ppval);
+        ppv.setPpv(ppval);
+        return ppv;
+
     }
 
     public void printClasses(List<Centroid> centroids, List<Record> records) {
@@ -113,13 +205,6 @@ public class KMeans {
             }
             threshold = Double.valueOf(PropertyReader.getProperty(Constants.THRESHHOLD));
             iterations = Integer.parseInt(PropertyReader.getProperty(Constants.ITERATIONS));
-            String selectedRecords = PropertyReader.getProperty(Constants.SELECTED_RECORDS);
-            String[] records = selectedRecords.split(",");
-            userGivenAttributes = new int[records.length];
-            for (int i = 0; i < records.length; i++){
-                userGivenAttributes[i] = Integer.parseInt(records[i]);
-            }
-            numberOfUserGivenAttributes = userGivenAttributes.length;
 
         } catch (Exception e) {
             logger.error("Error occurred while reading configuration file", e);
@@ -138,9 +223,9 @@ public class KMeans {
             while ((line = br.readLine()) != null) {
                 String[] lineSplits = line.split(",");
                 if (lineSplits.length > totalAttributes) {
-                    Record record = new Record(Integer.valueOf(lineSplits[0]), numberOfUserGivenAttributes);
-                    for (int i = 1; i < numberOfUserGivenAttributes - 1; i++) {
-                        record.setAttribute(i - 1, Integer.parseInt(lineSplits[userGivenAttributes[i]]));
+                    Record record = new Record(Integer.valueOf(lineSplits[0]), totalAttributes);
+                    for (int i = 1; i < totalAttributes - 1; i++) {
+                        record.setAttribute(i - 1, Integer.parseInt(lineSplits[i]));
                     }
                     record.setDataClass(Integer.valueOf(lineSplits[10]));
                     recordList.add(record);
@@ -154,9 +239,9 @@ public class KMeans {
         }
     }
 
-    public double euclideanDistance(int[] attrib1, int[] attrib2) {
+    public double euclideanDistance(int[] attrib1, int[] attrib2, Set<Integer> attributeIndexes) {
         double v = 0;
-        for (int i = 0; i < attrib1.length; i++) {
+        for (int i : attributeIndexes) {
             v += Math.pow(((Integer) attrib1[i] - (Integer) attrib2[i]), 2);
         }
         return Math.sqrt(v);
@@ -167,8 +252,8 @@ public class KMeans {
         List<Centroid> randomCentroids = new ArrayList<Centroid>();
         Random random = new Random();
         for (int j = 0; j < k; j++) {
-            Record record = new Record(0, numberOfUserGivenAttributes);
-            for (int i = 0; i < numberOfUserGivenAttributes; i++) {
+            Record record = new Record(0, totalAttributes);
+            for (int i = 0; i < totalAttributes; i++) {
                 int r = (int) (random.nextDouble() * 10);
                 record.setAttribute(i, r);
             }
@@ -179,7 +264,7 @@ public class KMeans {
     }
 
 
-    public void assignRecordsToCentroids(List<Centroid> centroidList, List<Record> recordList) {
+    public void assignRecordsToCentroids(List<Centroid> centroidList, List<Record> recordList, Set<Integer> attributeIndexes) {
         for (int j = 0; j < recordList.size(); j++) {
             double[] distancesToEachCentroid = new double[centroidList.size()];
             Record record = recordList.get(j);
@@ -188,7 +273,7 @@ public class KMeans {
                 Centroid centroid = centroidList.get(i);
                 Record randomRecord = centroid.getRandomRecord();
                 int[] attributeList2 = randomRecord.getAttributes();
-                distancesToEachCentroid[i] = euclideanDistance(attributeList1, attributeList2);
+                distancesToEachCentroid[i] = euclideanDistance(attributeList1, attributeList2, attributeIndexes);
             }
             int index = calculateMin(distancesToEachCentroid);
             centroidList.get(index).addRecordToAssignedList(j);
@@ -212,7 +297,7 @@ public class KMeans {
         List<Centroid> newCentroidList = new ArrayList<Centroid>();
 
         for (int i = 0; i < centroidList.size(); i++) {
-            Centroid centroid = new Centroid(new Record(0, numberOfUserGivenAttributes), i);
+            Centroid centroid = new Centroid(new Record(0, totalAttributes), i);
             newCentroidList.add(centroid);
         }
 
@@ -222,7 +307,7 @@ public class KMeans {
             Record centroidRecord = c.getRandomRecord();
 
             int[] attrbs = centroidRecord.getAttributes();
-            for (int j = 0; j < numberOfUserGivenAttributes; j++) {
+            for (int j = 0; j < totalAttributes; j++) {
                 int d = r.getAttributes()[j];
                 attrbs[j] = (attrbs[j] + d);
             }
@@ -234,7 +319,7 @@ public class KMeans {
             if (oldCentroid.getAssignedRecords().size() != 0){
                 Record r = centroid.getRandomRecord();
                 int[] attrbs = r.getAttributes();
-                for (int j = 0; j < numberOfUserGivenAttributes; j++) {
+                for (int j = 0; j < totalAttributes; j++) {
                     int d = r.getAttributes()[j];
                     attrbs[j] = d / oldCentroid.getAssignedRecords().size();
                 }

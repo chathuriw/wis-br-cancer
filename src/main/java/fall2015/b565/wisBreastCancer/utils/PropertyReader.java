@@ -35,7 +35,7 @@ public class PropertyReader {
         try {
             InputStream is = FileReader.class.getClassLoader().getResourceAsStream(Constants.KMEANS_PROPERTIES_FILE);
             properties.load(is);
-        }catch (Exception e){
+        } catch (Exception e){
             logger.error("Error while loading the properties file", e);
             throw new Exception("Error while loading the properties file", e);
         }

@@ -21,18 +21,18 @@
 
 package fall2015.b565.wisBreastCancer;
 
-import java.util.ArrayList;
-import java.util.List;
-
-public class Centroid {
+public class PPV {
+    private double ppv;
     private int centroidId;
-    private Record randomRecord;
-    private List<Integer> assignedRecords = new ArrayList<Integer>();
-    private int resultLable;
+    private int numberOfAttributes;
+    private int[] attributeHeaders;
 
-    public Centroid(Record randomRecord, int centroidId) {
-        this.randomRecord = randomRecord;
-        this.centroidId = centroidId;
+    public double getPpv() {
+        return ppv;
+    }
+
+    public void setPpv(double ppv) {
+        this.ppv = ppv;
     }
 
     public int getCentroidId() {
@@ -43,31 +43,19 @@ public class Centroid {
         this.centroidId = centroidId;
     }
 
-    public Record getRandomRecord() {
-        return randomRecord;
+    public int getNumberOfAttributes() {
+        return numberOfAttributes;
     }
 
-    public void setRandomRecord(Record randomRecord) {
-        this.randomRecord = randomRecord;
+    public void setNumberOfAttributes(int numberOfAttributes) {
+        this.numberOfAttributes = numberOfAttributes;
     }
 
-    public List<Integer> getAssignedRecords() {
-        return assignedRecords;
+    public int[] getAttributeHeaders() {
+        return attributeHeaders;
     }
 
-    public void setAssignedRecords(List<Integer> assignedRecords) {
-        this.assignedRecords = assignedRecords;
-    }
-
-    public void addRecordToAssignedList (int index){
-        assignedRecords.add(index);
-    }
-
-    public int getResultLable() {
-        return resultLable;
-    }
-
-    public void setResultLable(int resultLable) {
-        this.resultLable = resultLable;
+    public void setAttributeHeaders(int[] attributeHeaders) {
+        this.attributeHeaders = attributeHeaders;
     }
 }

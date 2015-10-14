@@ -30,8 +30,6 @@ public class Constants {
     public static final int DEFAULT_NUMBER_OF_CENTROIDS = 2;
     public static final String THRESHHOLD = "threshold";
     public static final String ITERATIONS = "iterations";
-    public static final String SELECTED_RECORDS = "selected.records";
-    public static final String NUMBER_OF_ATTRIBUTES = "number.of.attributes";
     public static final Integer BENIGN = 2;
     public static final Integer MALIGNANT = 4;
     public static final Integer ATTR_SCN = 1;
