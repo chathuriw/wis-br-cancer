@@ -1,0 +1,31 @@
+How to run
+========================
+
+1. Copy wis-br-cancer-1.0.0-jar-with-dependencies.jar to a location
+2. Copy the resources folder from the source location to the location you copy the jar
+3. Resources file contains data files and properties file (kmeans.properties) where you can change different properties (eg: number.of.centroids,threshold, iterations, vfold.cross.validation.blocks)
+4. To run the jar, in the command line type :
+        java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar {parameters}
+
+        You can provide different parameters.
+            -c = to get correlations between the attributes
+                 eg :   java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar -c
+            -ppv = to calculate the PPV value considering all the attributes
+                 eg :   java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar -ppv
+            -powPPV = to calculate the PPV value for the power set of attributes with changing K values. K value is changing from 2 to 20 with increment of 2
+                 eg :   java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar -powPPV
+            -vfold = to calculate the V fold cross validation
+                 eg :   java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar -vfold
+
+How to build
+===================================
+
+1. Go to wis-br-cancer location in the command line. In there you will find a pom.xml
+2. To build, run the command
+        mvn clean install
+    In the target folder it will create the executable jar with all the dependencies as wis-br-cancer-1.0.0-jar-with-dependencies.jar
+
+3. To create source artifacts for Eclipe and Intellij-Idea, run the command
+        eclipse - mvn eclipse:eclipe
+        idea - mvn idea:idea
+    Now you will be able to open the wis-br-cancer in your IDE.

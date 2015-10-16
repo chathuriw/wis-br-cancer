@@ -24,7 +24,7 @@ package fall2015.b565.wisBreastCancer.utils;
 public class Constants {
     public static final String DATA_FILE_NAME = "breast-cancer-wisconsin.data.txt";
     public static final String CLEANED_DATA_FILE_NAME = "breast-cancer-wisconsin_cleaned.data.txt";
-    public static final String CLEANED_DATA_FILE_PATH = "src/main/resources/" + CLEANED_DATA_FILE_NAME;
+    public static final String CLEANED_DATA_FILE_PATH = "resources/" + CLEANED_DATA_FILE_NAME;
     public static final String KMEANS_PROPERTIES_FILE = "kmeans.properties";
     public static final String NUMBER_OF_CENTROIDS = "number.of.centroids";
     public static final String VFOLD_VALIDATION_BLOCKS = "vfold.cross.validation.blocks";
