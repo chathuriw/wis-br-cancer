@@ -25,7 +25,7 @@ How to build
         mvn clean install
     In the target folder it will create the executable jar with all the dependencies as wis-br-cancer-1.0.0-jar-with-dependencies.jar
 
-3. To create source artifacts for Eclipe and Intellij-Idea, run the command
-        eclipse - mvn eclipse:eclipe
+3. To create source artifacts for Eclipse and Intellij-Idea, run the command
+        eclipse - mvn eclipse:eclipse
         idea - mvn idea:idea
     Now you will be able to open the wis-br-cancer in your IDE.
