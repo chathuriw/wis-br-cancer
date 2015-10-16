@@ -23,9 +23,8 @@ package fall2015.b565.wisBreastCancer;
 
 public class PPV {
     private double ppv;
-    private int centroidId;
-    private int numberOfAttributes;
     private int[] attributeHeaders;
+    private int associateKVal;
 
     public double getPpv() {
         return ppv;
@@ -35,27 +34,19 @@ public class PPV {
         this.ppv = ppv;
     }
 
-    public int getCentroidId() {
-        return centroidId;
-    }
-
-    public void setCentroidId(int centroidId) {
-        this.centroidId = centroidId;
-    }
-
-    public int getNumberOfAttributes() {
-        return numberOfAttributes;
-    }
-
-    public void setNumberOfAttributes(int numberOfAttributes) {
-        this.numberOfAttributes = numberOfAttributes;
-    }
-
     public int[] getAttributeHeaders() {
         return attributeHeaders;
     }
 
     public void setAttributeHeaders(int[] attributeHeaders) {
         this.attributeHeaders = attributeHeaders;
+    }
+
+    public int getAssociateKVal() {
+        return associateKVal;
+    }
+
+    public void setAssociateKVal(int associateKVal) {
+        this.associateKVal = associateKVal;
     }
 }

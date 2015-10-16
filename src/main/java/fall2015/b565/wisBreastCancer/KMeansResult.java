@@ -28,7 +28,7 @@ import java.util.Set;
 public class KMeansResult {
     private List<Centroid> finalCentroids;
     private List<Record> initialRecords;
-    private Map<Set<Integer>, Double> ppvs;
+    private Map<Double, Set<Integer>> ppvs;
 
     public List<Centroid> getFinalCentroids() {
         return finalCentroids;
@@ -46,11 +46,11 @@ public class KMeansResult {
         this.initialRecords = initialRecords;
     }
 
-    public Map<Set<Integer>, Double> getPpvs() {
+    public Map<Double, Set<Integer>> getPpvs() {
         return ppvs;
     }
 
-    public void setPpvs(Map<Set<Integer>, Double> ppvs) {
+    public void setPpvs(Map<Double, Set<Integer>> ppvs) {
         this.ppvs = ppvs;
     }
 }

@@ -31,30 +31,14 @@ import java.util.*;
 
 public class FileReader {
     private static final Logger logger = LoggerFactory.getLogger(FileReader.class);
-    public static void main(String[] args) {
-        try {
-            FileReader fileReader = new FileReader();
-            Map<Integer, String> dataMapWithoutDuplicates = fileReader.dataMapWithoutDuplicates();
-            System.out.println(dataMapWithoutDuplicates.size());
-            Map<Integer, String> benignMap = fileReader.getBenignMap(dataMapWithoutDuplicates);
-            System.out.println(benignMap.size());
-            Map<Integer, String> malignantMap = fileReader.getMalignantMap(dataMapWithoutDuplicates);
-            System.out.println(malignantMap.size());
-            Map<Integer, String> missingDataMap = fileReader.getMissingDataMap(dataMapWithoutDuplicates);
-            Map<Integer, String> benignMapFromMissingData = fileReader.getBenignMap(missingDataMap);
-            System.out.println(benignMapFromMissingData.size());
-            Map<Integer, String> malignantMapFromMissingDate = fileReader.getMalignantMap(missingDataMap);
-            System.out.println(malignantMapFromMissingDate.size());
-            for (int i: missingDataMap.keySet()){
-                System.out.println("*************** before updating **************");
-                System.out.println(missingDataMap.get(i));
-            }
-            fileReader.updateMissingValuesDataMap(dataMapWithoutDuplicates);
-            fileReader.writeCleanData(dataMapWithoutDuplicates);
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public void cleanDataSet() throws Exception {
+        System.out.println("1: Removing duplicate entries...");
+        Map<Integer, String> dataMapWithoutDuplicates = dataMapWithoutDuplicates();
+        System.out.println("2: Update missing data entries with mean of that data column...");
+        updateMissingValuesDataMap(dataMapWithoutDuplicates);
+        System.out.println("3: Write clean data set to file...");
+        writeCleanData(dataMapWithoutDuplicates);
     }
 
     public Map<Integer, String> dataMapWithoutDuplicates () throws Exception{
@@ -116,9 +100,10 @@ public class FileReader {
         int meanForBareNuclei = getMean(sortedMapWithoutDuplicates, AttributeNames.BARE_NUCLEI);
         for (Integer id : sortedMapWithoutDuplicates.keySet()){
             String data = sortedMapWithoutDuplicates.get(id);
-            String replacedRecord = data.replace("?", String.valueOf(meanForBareNuclei));
-            System.out.println(replacedRecord);
-            sortedMapWithoutDuplicates.put(id, replacedRecord);
+            if (data.contains("?")){
+                String replacedRecord = data.replace("?", String.valueOf(meanForBareNuclei));
+                sortedMapWithoutDuplicates.put(id, replacedRecord);
+            }
         }
     }
 
@@ -241,7 +226,6 @@ public class FileReader {
         }
 
         mean = (int)(count / size);
-        System.out.println("mean : " + mean);
         return mean;
 
     }
@@ -253,6 +237,7 @@ public class FileReader {
                 writer.println(String.valueOf(id) + "," + cleanedMap.get(id));
             }
             writer.close();
+            System.out.println("Updated data written to " + Constants.CLEANED_DATA_FILE_PATH);
         }catch (Exception e){
             logger.error("Error occurred while writing data to file :" + Constants.CLEANED_DATA_FILE_NAME);
             throw new Exception("Error occurred while writing data to file :" + Constants.CLEANED_DATA_FILE_NAME, e);

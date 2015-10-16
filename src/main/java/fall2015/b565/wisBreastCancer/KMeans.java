@@ -21,9 +21,11 @@
 
 package fall2015.b565.wisBreastCancer;
 
+import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
 import fall2015.b565.wisBreastCancer.utils.Constants;
 import fall2015.b565.wisBreastCancer.utils.PropertyReader;
+import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,49 +43,108 @@ public class KMeans {
     private static int totalAttributes = 9;
     private static int vfoldBlocks = 0;
 
-    public static void main(String[] args) throws Exception {
-        KMeans kMeans = new KMeans();
-        kMeans.readConfigurations();
-        kMeans.findKmeansToAllAttributes();
-        kMeans.findKmeansToAttributePowerSet();
+    public KMeans() {
+        try{
+            readConfigurations();
+        } catch (Exception e) {
+            logger.error("Error occurred while reading configuration files !!!");
+        }
     }
 
-    private void findKmeansToAttributePowerSet() throws Exception {
+    public List<PPV> findKmeansToAttributePowerSet() throws Exception {
         Set<Set<Integer>> kMeansPowerSet = getPowerSet(new HashSet<Integer>(Ints.asList(allAttributeHeaders)));
-        Map<Double, Set<Integer>> ppvMap = new HashMap<Double, Set<Integer>>();
+        List<PPV> ppvList = new ArrayList<PPV>();
         List<Record> records = getRecords();
         for (Set<Integer> set : kMeansPowerSet){
             if (set.size() != 0) {
-                // make data structure of attributes
-                KMeansResult result = calculate(records, set);
-                double ppv = getPPV(result.getFinalCentroids(), result.getInitialRecords());
-                ppvMap.put(ppv, set);
-                double vFoldCrossValidation = vFoldCrossValidation(result.getInitialRecords(), vfoldBlocks, set);
-                System.out.println("VFoldcrossValidation val : " + vFoldCrossValidation);
+                // changing k
+                for (int i = 2; i < 20; i += 2){
+                    PPV ppvInstance = new PPV();
+                    KMeansResult result = calculate(records, set, i);
+                    double ppv = calculatePPV(result.getFinalCentroids(), result.getInitialRecords());
+                    ppvInstance.setPpv(ppv);
+                    ppvInstance.setAttributeHeaders(Ints.toArray(set));
+                    ppvInstance.setAssociateKVal(i);
+                    ppvList.add(ppvInstance);
+                }
             }
         }
         Double maxPPV = 0.0;
-        for (Double ppv : ppvMap.keySet()){
-            if (ppv > maxPPV){
-                maxPPV = ppv;
+        int associateKVal = 2;
+        int[] attributeHeaders = null;
+        String attributeHeader = "";
+        for (PPV ppv : ppvList){
+            double ppvVal = ppv.getPpv();
+            if (ppvVal > maxPPV){
+                maxPPV = ppvVal;
+                associateKVal = ppv.getAssociateKVal();
+                attributeHeaders = ppv.getAttributeHeaders();
             }
         }
-        Set<Integer> attributeSet = ppvMap.get(maxPPV);
-        System.out.println("Max PPV : " + maxPPV + " attribute Set : " + attributeSet.toString());
+        if (attributeHeaders != null){
+            for (int header : attributeHeaders){
+                attributeHeader += header + ",";
+            }
+        }
+        System.out.println("Max PPV : " + maxPPV + " comes when Attribute Set is : " + attributeHeader + " and when k = " + associateKVal);
+        return ppvList;
     }
 
-    private void findKmeansToAllAttributes() throws Exception {
+    public KMeansResult findKmeansToAllAttributes() throws Exception {
         List<Record> records = getRecords();
         // make data structure of attributes
         HashSet<Integer> attributes = new HashSet<Integer>(Ints.asList(allAttributeHeaders));
-        KMeansResult result = calculate(records, attributes);
-        double ppv = getPPV(result.getFinalCentroids(), result.getInitialRecords());
-        double vFoldCrossValidation = vFoldCrossValidation(result.getInitialRecords(), vfoldBlocks, attributes);
-        System.out.println("PPV : " + ppv);
-        System.out.println("VFoldcrossValidation val : " + vFoldCrossValidation);
+        return calculate(records, attributes, k);
     }
 
-    public KMeansResult calculate(List<Record> records, Set<Integer> attributes) {
+    public void findAttributeCorrelations() throws Exception {
+        List<Record> records = getRecords();
+        Map<Integer, List<Integer>> attributes = getAttributes(records);
+        Map<int[], Double> corelationMap = findCorrelation(attributes);
+        double max = 0;
+        int[] maxPair = {0,0};
+        for (int[] pair : corelationMap.keySet()){
+            double correlation = corelationMap.get(pair);
+            if (max < correlation){
+                max = correlation;
+                maxPair = pair;
+            }
+            System.out.println("Attribute pair : {" + pair[0] + "," + pair[1] + "} : correlation : " + correlation);
+        }
+        System.out.println("Highest Correlation : " + max + " comes for attribute pair : {" + maxPair[0] + ", " + maxPair[1] + "}" );
+
+    }
+
+    public Map<int[], Double> findCorrelation(Map<Integer, List<Integer>> attributes){
+        Set<Integer> indexes = attributes.keySet();
+        Map<int[], Double> correlationMap = new HashMap<int[], Double>();
+        List<int[]> possiblePairs = getPossiblePairs(indexes);
+        for (int[] pair : possiblePairs){
+            List<Integer> attribute1 = attributes.get(pair[0]);
+            List<Integer> attribute2 = attributes.get(pair[1]);
+            double[] attributeArray1 = Doubles.toArray(attribute1);
+            double[] attributeArray2 = Doubles.toArray(attribute2);
+            PearsonsCorrelation pearsonsCorrelation = new PearsonsCorrelation();
+            double correlation = pearsonsCorrelation.correlation(attributeArray1, attributeArray2);
+            correlationMap.put( pair, correlation);
+        }
+        return correlationMap;
+    }
+
+    private List<int[]> getPossiblePairs(Set<Integer> indexes) {
+        List<int[]> pairs = new ArrayList<int[]>();
+        for (int i = 1; i < indexes.size() + 1; i++){
+            for (int j=i+1; j < indexes.size() + 1; j++){
+                if (i !=j){
+                    int[] indexPair = {i, j};
+                    pairs.add(indexPair);
+                }
+            }
+        }
+        return pairs;
+    }
+
+    public KMeansResult calculate(List<Record> records, Set<Integer> attributes, int k) {
         try {
             KMeansResult result = new KMeansResult();
             // randomly select K centroids
@@ -124,12 +185,6 @@ public class KMeans {
         }
     }
 
-    private double getPPV(List<Centroid> lastAssignedCentroids, List<Record> records){
-        PPV ppv = calculatePPV(lastAssignedCentroids, records);
-        System.out.println("PPV val : " + ppv.getPpv());
-        return ppv.getPpv();
-    }
-
     public double centroidDistance(List<Centroid> centroids1, List<Centroid> centroids2, Set<Integer> attributeIndexes) {
         double sum = 0;
         for (int i = 0; i < centroids1.size(); i++) {
@@ -161,8 +216,7 @@ public class KMeans {
         return sets;
     }
 
-    public PPV calculatePPV (List<Centroid> centroids, List<Record> records) {
-        PPV ppv = new PPV();
+    public double calculatePPV (List<Centroid> centroids, List<Record> records) {
         HashMap<Integer, HashMap<Integer, Integer>> centroidClassMap = new HashMap<Integer, HashMap<Integer, Integer>>();
         for (Centroid centroid : centroids) {
             List<Integer> assignedRecords = centroid.getAssignedRecords();
@@ -182,7 +236,6 @@ public class KMeans {
         Integer totalTP = 0;
         Integer totalFP = 0;
         for (Integer centroidId : centroidClassMap.keySet()) {
-            ppv.setCentroidId(centroidId);
             HashMap<Integer, Integer> classCountMap = centroidClassMap.get(centroidId);
             Integer maxCount = 0;
             Integer totalCount = 0;
@@ -197,9 +250,8 @@ public class KMeans {
             totalFP += (totalCount - maxCount);
         }
         double ppval = (double) totalTP / (totalTP + totalFP);
-        System.out.println("totalTp : " + totalTP + " total count : " + (totalTP + totalFP) + " ppv : " + ppval);
-        ppv.setPpv(ppval);
-        return ppv;
+//        System.out.println("Total TP : " + totalTP + " TotalTP + TotalFP : " + (totalTP + totalFP) + " PPV : " + ppval);
+        return ppval;
 
     }
 
@@ -254,6 +306,41 @@ public class KMeans {
             logger.error("Error occurred while reading cleaned data file", e);
             throw new Exception("Error occurred while reading cleaned data file", e);
         }
+    }
+
+    public Map<Integer, List<Integer>> getAttributes (List<Record> records){
+        Map<Integer, List<Integer>> attributeMap = new HashMap<Integer, List<Integer>>();
+        List<Integer> attriA1 = new ArrayList<Integer>();
+        List<Integer> attriA2 = new ArrayList<Integer>();
+        List<Integer> attriA3 = new ArrayList<Integer>();
+        List<Integer> attriA4 = new ArrayList<Integer>();
+        List<Integer> attriA5 = new ArrayList<Integer>();
+        List<Integer> attriA6 = new ArrayList<Integer>();
+        List<Integer> attriA7 = new ArrayList<Integer>();
+        List<Integer> attriA8 = new ArrayList<Integer>();
+        List<Integer> attriA9 = new ArrayList<Integer>();
+        for (Record record : records) {
+            int[] attributes = record.getAttributes();
+            attriA1.add(attributes[0]);
+            attriA2.add(attributes[1]);
+            attriA3.add(attributes[2]);
+            attriA4.add(attributes[3]);
+            attriA5.add(attributes[4]);
+            attriA6.add(attributes[5]);
+            attriA7.add(attributes[6]);
+            attriA8.add(attributes[7]);
+            attriA9.add(attributes[8]);
+        }
+        attributeMap.put(1, attriA1);
+        attributeMap.put(2, attriA2);
+        attributeMap.put(3, attriA3);
+        attributeMap.put(4, attriA4);
+        attributeMap.put(5, attriA5);
+        attributeMap.put(6, attriA6);
+        attributeMap.put(7, attriA7);
+        attributeMap.put(8, attriA8);
+        attributeMap.put(9, attriA9);
+        return attributeMap;
     }
 
     public double euclideanDistance(int[] attrib1, int[] attrib2, Set<Integer> attributeIndexes) {
@@ -352,20 +439,20 @@ public class KMeans {
         List<Record> test = new ArrayList<Record>();
     }
 
-    public double vFoldCrossValidation (List<Record> recordList, int v, Set<Integer> attributeIndexes){
+    public double vFoldCrossValidation (List<Record> recordList, Set<Integer> attributeIndexes){
         double ppv = 0;
-        for (int i = 0; i < v; i++) {
-            VFoldRecords vFoldRecords = vFoldRecords(recordList, i, v);
-            KMeansResult result = calculate(vFoldRecords.train, attributeIndexes);
+        for (int i = 0; i < vfoldBlocks; i++) {
+            VFoldRecords vFoldRecords = vFoldRecords(recordList, i, vfoldBlocks);
+            KMeansResult result = calculate(vFoldRecords.train, attributeIndexes, k);
 
             List<Centroid> finalCentroids = result.getFinalCentroids();
             for (Centroid centroid : finalCentroids){
                 centroid.getAssignedRecords().clear();
             }
             assignRecordsToCentroids(finalCentroids, vFoldRecords.test, attributeIndexes);
-            ppv += getPPV(finalCentroids, vFoldRecords.test);
+            ppv += calculatePPV(finalCentroids, vFoldRecords.test);
         }
-        return ppv / v;
+        return ppv / vfoldBlocks;
     }
 
     private VFoldRecords vFoldRecords(List<Record> recordList, int index, int folds) {
