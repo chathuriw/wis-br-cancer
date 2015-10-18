@@ -7,15 +7,19 @@ How to run
 4. To run the jar, in the command line type :
         java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar {parameters}
 
+        For ppv, powPPV and vfold options you can say how to use cleaned data set. There are two options to clean the data set.
+            1. Clean the data set by replacing the mean of the missing attribute (rp)
+            2. Clean the data set by removing the data entries with missing data (rm)
+
         You can provide different parameters.
             -c = to get correlations between the attributes
                  eg :   java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar -c
-            -ppv = to calculate the PPV value considering all the attributes
-                 eg :   java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar -ppv
-            -powPPV = to calculate the PPV value for the power set of attributes with changing K values. K value is changing from 2 to 20 with increment of 2
-                 eg :   java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar -powPPV
-            -vfold = to calculate the V fold cross validation
-                 eg :   java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar -vfold
+            -ppv = to calculate the PPV value considering all the attributes with rm or rp options
+                 eg :   java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar -ppv rm
+            -powPPV = to calculate the PPV value for the power set of attributes with changing K values with rm or rp options. K value is changing from 2 to 20 with increment of 2
+                 eg :   java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar -powPPV rp
+            -vfold = to calculate the V fold cross validation with rm or rp options.
+                 eg :   java -Xmx1024m -jar wis-br-cancer-1.0.0-jar-with-dependencies.jar -vfold rm
 
 How to build
 ===================================

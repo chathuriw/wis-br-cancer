@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
@@ -51,10 +52,10 @@ public class KMeans {
         }
     }
 
-    public List<PPV> findKmeansToAttributePowerSet() throws Exception {
+    public List<PPV> findKmeansToAttributePowerSet(String cleanedfilePath) throws Exception {
         Set<Set<Integer>> kMeansPowerSet = getPowerSet(new HashSet<Integer>(Ints.asList(allAttributeHeaders)));
         List<PPV> ppvList = new ArrayList<PPV>();
-        List<Record> records = getRecords();
+        List<Record> records = getRecords(cleanedfilePath);
         for (Set<Integer> set : kMeansPowerSet){
             if (set.size() != 0) {
                 // changing k
@@ -90,15 +91,15 @@ public class KMeans {
         return ppvList;
     }
 
-    public KMeansResult findKmeansToAllAttributes() throws Exception {
-        List<Record> records = getRecords();
+    public KMeansResult findKmeansToAllAttributes(String cleanedFilePath) throws Exception {
+        List<Record> records = getRecords(cleanedFilePath);
         // make data structure of attributes
         HashSet<Integer> attributes = new HashSet<Integer>(Ints.asList(allAttributeHeaders));
         return calculate(records, attributes, k);
     }
 
     public void findAttributeCorrelations() throws Exception {
-        List<Record> records = getRecords();
+        List<Record> records = getRecords(Constants.REPLACED_DATA_FILE_PATH);
         Map<Integer, List<Integer>> attributes = getAttributes(records);
         Map<int[], Double> corelationMap = findCorrelation(attributes);
         double max = 0;
@@ -168,7 +169,7 @@ public class KMeans {
                 currentCentroidDifference = centroidDistance(newCentroids, centroids, attributes);
                 double difference = Math.abs(currentCentroidDifference - previousCentroidDifference);
                 if (difference <= threshold * previousCentroidDifference) {
-                    System.out.println("KMeans finished in iterations: " + i + " with threshold difference: " + difference);
+//                    System.out.println("KMeans finished in iterations: " + i + " with threshold difference: " + difference);
                     break;
                 }
                 previousCentroidDifference = currentCentroidDifference;
@@ -281,10 +282,10 @@ public class KMeans {
         }
     }
 
-    public List<Record> getRecords() throws Exception {
+    public List<Record> getRecords(String filePath) throws Exception {
         List<Record> recordList = new ArrayList<Record>();
         try {
-            InputStream is = FileReader.class.getClassLoader().getResourceAsStream(Constants.CLEANED_DATA_FILE_NAME);
+            InputStream is = new FileInputStream(filePath);
             // Construct BufferedReader from FileReader
             BufferedReader br = new BufferedReader(new InputStreamReader(is));
 

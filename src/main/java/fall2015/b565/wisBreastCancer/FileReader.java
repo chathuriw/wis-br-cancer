@@ -35,10 +35,13 @@ public class FileReader {
     public void cleanDataSet() throws Exception {
         System.out.println("1: Removing duplicate entries...");
         Map<Integer, String> dataMapWithoutDuplicates = dataMapWithoutDuplicates();
-        System.out.println("2: Update missing data entries with mean of that data column...");
-        updateMissingValuesDataMap(dataMapWithoutDuplicates);
-        System.out.println("3: Write clean data set to file...");
-        writeCleanData(dataMapWithoutDuplicates);
+        System.out.println("2.1: Update missing data entries with mean of that data column...");
+        Map<Integer, String> updatedDataSetWithReplace = updateMissingValuesWithMeanDataMap(dataMapWithoutDuplicates);
+        System.out.println("2.2: Remove missing data entries...");
+        Map<Integer, String> updatedDataSetWithRemove = removeMissingValuesDataMap(dataMapWithoutDuplicates);
+        System.out.println("3: Write clean data set two files...");
+        writeCleanData(updatedDataSetWithReplace, Constants.REPLACED_DATA_FILE_PATH);
+        writeCleanData(updatedDataSetWithRemove, Constants.REMOVED_DATA_FILE_PATH);
     }
 
     public Map<Integer, String> dataMapWithoutDuplicates () throws Exception{
@@ -95,16 +98,29 @@ public class FileReader {
         return new TreeMap<Integer, String>(missingDataMap);
     }
 
-    public void updateMissingValuesDataMap (Map<Integer, String> sortedMapWithoutDuplicates) throws Exception {
-        // read attribute 7 and get the mean
+    public Map<Integer, String> updateMissingValuesWithMeanDataMap(Map<Integer, String> sortedMapWithoutDuplicates) throws Exception {
+        // read attribute 6 and get the mean
+        Map<Integer, String> newDataMap = new HashMap<Integer, String>(sortedMapWithoutDuplicates);
         int meanForBareNuclei = getMean(sortedMapWithoutDuplicates, AttributeNames.BARE_NUCLEI);
-        for (Integer id : sortedMapWithoutDuplicates.keySet()){
-            String data = sortedMapWithoutDuplicates.get(id);
+        for (Integer id : newDataMap.keySet()){
+            String data = newDataMap.get(id);
             if (data.contains("?")){
                 String replacedRecord = data.replace("?", String.valueOf(meanForBareNuclei));
-                sortedMapWithoutDuplicates.put(id, replacedRecord);
+                newDataMap.put(id, replacedRecord);
             }
         }
+        return newDataMap;
+    }
+
+    public Map<Integer, String> removeMissingValuesDataMap (Map<Integer, String> sortedMapWithoutDuplicates) throws Exception {
+        Map<Integer, String> newDataMap = new HashMap<Integer, String>(sortedMapWithoutDuplicates);
+        for(Iterator<Map.Entry<Integer, String>> it = newDataMap.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<Integer, String> entry = it.next();
+            if (entry.getValue().contains("?")){
+                it.remove();
+            }
+        }
+        return newDataMap;
     }
 
     public int getMean (Map<Integer, String> sortedMapWithoutDuplicates, AttributeNames attribute) throws Exception{
@@ -230,17 +246,17 @@ public class FileReader {
 
     }
 
-    public void writeCleanData(Map<Integer, String> cleanedMap) throws Exception{
+    public void writeCleanData(Map<Integer, String> cleanedMap, String filePath) throws Exception{
         try {
-            PrintWriter writer = new PrintWriter(Constants.CLEANED_DATA_FILE_PATH);
+            PrintWriter writer = new PrintWriter(filePath);
             for (Integer id : cleanedMap.keySet()){
                 writer.println(String.valueOf(id) + "," + cleanedMap.get(id));
             }
             writer.close();
-            System.out.println("Updated data written to " + Constants.CLEANED_DATA_FILE_PATH);
+            System.out.println("Updated data written to " + filePath);
         }catch (Exception e){
-            logger.error("Error occurred while writing data to file :" + Constants.CLEANED_DATA_FILE_NAME);
-            throw new Exception("Error occurred while writing data to file :" + Constants.CLEANED_DATA_FILE_NAME, e);
+            logger.error("Error occurred while writing data to file :" + filePath);
+            throw new Exception("Error occurred while writing data to file :" + filePath, e);
         }
 
     }
