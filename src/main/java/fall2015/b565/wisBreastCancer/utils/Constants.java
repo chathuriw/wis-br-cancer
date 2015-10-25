@@ -28,9 +28,11 @@ public class Constants {
     public static final String REPLACED_DATA_FILE_PATH = "resources/" + REPLACED_DATA_FILE_NAME;
     public static final String REMOVED_DATA_FILE_PATH = "resources/" + REMOVED_DATA_FILE_NAME;
     public static final String KMEANS_PROPERTIES_FILE = "kmeans.properties";
-    public static final String NUMBER_OF_CENTROIDS = "number.of.centroids";
+    public static final String NUMBER_OF_CENTROIDS = "number.of.centroids.k";
+    public static final String NUMBER_OF_CENTROIDS_DATA_ASSIGNED = "number.of.centroids.assigned.l";
     public static final String VFOLD_VALIDATION_BLOCKS = "vfold.cross.validation.blocks";
     public static final int DEFAULT_NUMBER_OF_CENTROIDS = 2;
+    public static final int DEFAULT_L = 1;
     public static final String THRESHHOLD = "threshold";
     public static final String ITERATIONS = "iterations";
     public static final Integer BENIGN = 2;

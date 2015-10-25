@@ -21,10 +21,13 @@
 
 package fall2015.b565.wisBreastCancer;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Record {
     private int scn;
     private int dataClass;
-    private int centroidIndex;
+    private List<CentroidDistance> centroidDistances = new ArrayList<CentroidDistance>();
 
     private int[] attributes;
 
@@ -56,11 +59,11 @@ public class Record {
         this.dataClass = dataClass;
     }
 
-    public int getCentroidIndex() {
-        return centroidIndex;
+    public List<CentroidDistance> getCentroidDistances() {
+        return centroidDistances;
     }
 
-    public void setCentroidIndex(int centroidIndex) {
-        this.centroidIndex = centroidIndex;
+    public void addCentroidDistance(CentroidDistance centroidDistance) {
+        this.centroidDistances.add(centroidDistance);
     }
 }
